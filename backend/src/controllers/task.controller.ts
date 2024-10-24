@@ -1,3 +1,4 @@
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -7,24 +8,27 @@ import {
   Where,
 } from '@loopback/repository';
 import {
-  post,
-  param,
+  del,
   get,
   getModelSchemaRef,
+  param,
   patch,
+  post,
   put,
-  del,
   requestBody,
   response,
 } from '@loopback/rest';
 import {Task} from '../models';
 import {TaskRepository} from '../repositories';
+import {RedisCacheService} from '../services';
+import {TASK_CACHE_NAME} from '../utils';
 
 export class TaskController {
   constructor(
     @repository(TaskRepository)
-    public taskRepository : TaskRepository,
-  ) {}
+    public taskRepository: TaskRepository,
+    @inject('services.RedisCacheService') private redisCacheService: RedisCacheService,
+  ) { }
 
   @post('/tasks')
   @response(200, {
@@ -44,6 +48,7 @@ export class TaskController {
     })
     task: Omit<Task, 'id'>,
   ): Promise<Task> {
+    await this.redisCacheService.del(TASK_CACHE_NAME)
     return this.taskRepository.create(task);
   }
 
@@ -73,7 +78,17 @@ export class TaskController {
   async find(
     @param.filter(Task) filter?: Filter<Task>,
   ): Promise<Task[]> {
-    return this.taskRepository.find(filter);
+
+    const cachedTasks = await this.redisCacheService.get(TASK_CACHE_NAME);
+    if (cachedTasks) {
+      console.log('Fetching tasks from Redis cache');
+      return JSON.parse(cachedTasks);
+    }
+    const tasks = await this.taskRepository.find(filter);
+
+    await this.redisCacheService.set(TASK_CACHE_NAME, JSON.stringify(tasks), 3600);
+
+    return tasks;
   }
 
   @patch('/tasks')
