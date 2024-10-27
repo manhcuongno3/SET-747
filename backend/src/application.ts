@@ -1,19 +1,19 @@
+import {AuthenticationComponent, registerAuthenticationStrategy} from '@loopback/authentication';
 import {BootMixin} from '@loopback/boot';
 import {ApplicationConfig} from '@loopback/core';
-import {
-  RestExplorerBindings,
-  RestExplorerComponent,
-} from '@loopback/rest-explorer';
 import {RepositoryMixin} from '@loopback/repository';
 import {RestApplication} from '@loopback/rest';
-import {ServiceMixin} from '@loopback/service-proxy';
 import path from 'path';
+import {JWTStrategy} from './authentication-strategies/jwt-strategy';
+import {MongoDbDataSource} from './datasources';
 import {MySequence} from './sequence';
+import {UserService} from './services';
+import {JWTService} from './services/jwt-service';
 
 export {ApplicationConfig};
 
 export class BackendApplication extends BootMixin(
-  ServiceMixin(RepositoryMixin(RestApplication)),
+  RepositoryMixin(RestApplication),
 ) {
   constructor(options: ApplicationConfig = {}) {
     super(options);
@@ -24,17 +24,19 @@ export class BackendApplication extends BootMixin(
     // Set up default home page
     this.static('/', path.join(__dirname, '../public'));
 
-    // Customize @loopback/rest-explorer configuration here
-    this.configure(RestExplorerBindings.COMPONENT).to({
-      path: '/explorer',
-    });
-    this.component(RestExplorerComponent);
+    // Set up authentication components
+    this.component(AuthenticationComponent);
+    this.service(JWTService);
+    this.service(UserService);
+    registerAuthenticationStrategy(this, JWTStrategy);
+
+    // Bind the MongoDB datasource
+    this.dataSource(MongoDbDataSource);
 
     this.projectRoot = __dirname;
-    // Customize @loopback/boot Booter Conventions here
+    // Customize Booter Conventions here
     this.bootOptions = {
       controllers: {
-        // Customize ControllerBooter Conventions here
         dirs: ['controllers'],
         extensions: ['.controller.js'],
         nested: true,
