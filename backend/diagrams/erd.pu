@@ -8,6 +8,7 @@ entity "User" as user {
     password : string
     role : string
     createdAt : date
+    updatedAd : date
 }
 
 entity "Task" as task {
@@ -23,7 +24,7 @@ entity "Task" as task {
     projectId : string <<FK>>
     parentTaskId : string <<FK>>
     assignedUserId : string <<FK>>
-    createdByUserId : string <<FK>>
+    createdBy : string <<FK>>
 }
 
 entity "Project" as project {
@@ -33,7 +34,7 @@ entity "Project" as project {
     description : string
     startDate : date
     endDate : date
-    createdByUserId : string <<FK>>
+    createdBy : string <<FK>>
 }
 
 entity "UserProject" as userProject {
@@ -51,4 +52,4 @@ user ||--o{ task : "created by"
 task }o--|| project : "belongs to"
 user ||--o{ project : "created by"
 task ||--o| task : "is parent of"
-@enduml 
+@enduml
